@@ -95,9 +95,11 @@ def cut_pinyin_greedy(pinyin: str, is_intact=False, is_break=True):
         ans = []
         for part in parts:
             cut = cut_pinyin_greedy(part, is_intact, False)
-            if not cut:
-                return []
-            ans.extend(cut[0])
+            if cut:
+                ans.extend(cut[0])
+                continue
+            # 显式分隔出的片段允许原样保留, 其余片段继续贪心切分.
+            ans.append(part)
         return [tuple(ans)]
 
     ans = []
@@ -196,9 +198,14 @@ def cut_pinyin_by_mode(pinyin: str, mode="greedy", fuzzy_rules=None, is_break=Tr
             cut = cut_pinyin_by_mode(
                 part, mode=mode, fuzzy_rules=fuzzy_rules, is_break=False
             )
-            if not cut:
-                return []
-            ans.extend(cut[0])
+            if cut:
+                ans.extend(cut[0])
+                continue
+            if mode in {"greedy", "correction"}:
+                # 显式分隔出的片段允许原样保留, 其余片段继续做纠错.
+                ans.append(part)
+                continue
+            return []
         return [tuple(ans)]
 
     def _cut_recursive(rest: str):
@@ -354,6 +361,10 @@ if __name__ == "__main__":
     assert cut_pinyin_with_strategy("kuail")["greedy"] == [("kuai", "l")]
     assert cut_pinyin_by_mode("kuail") == [("kuai", "l")]
     assert cut_pinyin_by_mode("jainmian", mode="correction") == [("jian", "mian")]
+    assert cut_pinyin_by_mode("ja'i'mnig", mode="correction") == [("ja", "i", "ming")]
+    assert cut_pinyin_by_mode("ja'i'mnig", mode="greedy") == [
+        ("j", "a", "i", "m", "ni", "g")
+    ]
     assert cut_pinyin_by_mode("zan", mode="fuzzy", fuzzy_rules=fuzzy_rules) == [
         ("zan",),
         ("zhan",),
@@ -394,19 +405,47 @@ if __name__ == "__main__":
     print(res)
     res = cut_pinyin_greedy("tain", False)
     print(res)
-    res = cut_pinyin_by_mode("jainmian", mode="correction")
+    print("#" * 40)
+    print("greedy mode:")
+    res = cut_pinyin_by_mode("zanzan", mode="greedy")  # zan zan
     print(res)
-    res = cut_pinyin_by_mode("zan", mode="fuzzy", fuzzy_rules=fuzzy_rules)
+    res = cut_pinyin_by_mode("ja'i'mnig", mode="greedy")  # j a i m ni g
     print(res)
-    res = cut_pinyin_by_mode("zandui", mode="fuzzy", fuzzy_rules=fuzzy_rules)
+    res = cut_pinyin_by_mode("jaimnig", mode="greedy")  # j ai m ni g
     print(res)
-    res = cut_pinyin_by_mode("zanzan", mode="fuzzy", fuzzy_rules=fuzzy_rules)
+    print("correction mode:")
+    res = cut_pinyin_by_mode("jainmian", mode="correction")  # jian mian
     print(res)
-    res = cut_pinyin_by_mode("zanzan")
+    res = cut_pinyin_by_mode("jainshi", mode="correction")  # jian shi
     print(res)
-    res = cut_pinyin_by_mode("huiji", mode="fuzzy", fuzzy_rules=fuzzy_rules)
+    res = cut_pinyin_by_mode("jaimnig", mode="correction")  # jia ming
     print(res)
-    res = cut_pinyin_by_mode("jainshi", mode="correction")
+    res = cut_pinyin_by_mode("jai'mnig", mode="correction")  # jia ming
     print(res)
-    res = cut_pinyin_by_mode("jaimnig", mode="correction")
+    res = cut_pinyin_by_mode("ja'i'mnig", mode="correction")  # ja i ming
+    print(res)
+    res = cut_pinyin_by_mode("xi'an", mode="correction")  # xi an
+    print(res)
+    res = cut_pinyin_by_mode("xian", mode="correction")  # xian
+    print(res)
+    res = cut_pinyin_by_mode("xianyang", mode="correction")  # xian
+    print(res)
+    res = cut_pinyin_by_mode("xi'anyang", mode="correction")  # xian
+    print(res)
+    print("fuzzy mode:")
+    res = cut_pinyin_by_mode(
+        "zan", mode="fuzzy", fuzzy_rules=fuzzy_rules
+    )  # zan or zhan
+    print(res)
+    res = cut_pinyin_by_mode(
+        "zandui", mode="fuzzy", fuzzy_rules=fuzzy_rules
+    )  # zan dui or zhan dui
+    print(res)
+    res = cut_pinyin_by_mode(
+        "zanzan", mode="fuzzy", fuzzy_rules=fuzzy_rules
+    )  # zan zan or zhan zhan
+    print(res)
+    res = cut_pinyin_by_mode(
+        "huiji", mode="fuzzy", fuzzy_rules=fuzzy_rules
+    )  # hui ji or fei ji
     print(res)
