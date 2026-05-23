@@ -175,7 +175,7 @@ def cut_pinyin_by_mode(pinyin: str, mode="greedy", fuzzy_rules=None, is_break=Tr
 
     mode:
     - 'greedy': 直接使用贪心策略切分, 允许残缺尾部
-    - 'correction': 先按贪心切出首段; 如果首段不是完整拼音, 则对包含它的最短前缀做相邻字母交换纠错
+    - 'correction': 优先完整拼音; 若首段不完整则尝试相邻字母交换纠错; 失败时回退到残缺贪心切分
     - 'fuzzy': 返回原始贪心结果, 并额外返回整串应用模糊规则后的贪心结果
 
     fuzzy_rules:
@@ -231,6 +231,10 @@ def cut_pinyin_by_mode(pinyin: str, mode="greedy", fuzzy_rules=None, is_break=Tr
             tails = _cut_recursive(rest[consumed:])
             if tails:
                 return [[corrected] + tail for tail in tails]
+
+        tails = _cut_recursive(rest[len(first) :])
+        if tails:
+            return [[first] + tail for tail in tails]
 
         return []
 
@@ -361,7 +365,11 @@ if __name__ == "__main__":
     assert cut_pinyin_with_strategy("kuail")["greedy"] == [("kuai", "l")]
     assert cut_pinyin_by_mode("kuail") == [("kuai", "l")]
     assert cut_pinyin_by_mode("jainmian", mode="correction") == [("jian", "mian")]
-    assert cut_pinyin_by_mode("ja'i'mnig", mode="correction") == [("ja", "i", "ming")]
+    assert cut_pinyin_by_mode("ja'i'mnig", mode="correction") == [
+        ("j", "a", "i", "ming")
+    ]
+    assert cut_pinyin_by_mode("zzzq", mode="correction") == [("z", "z", "z", "q")]
+    assert cut_pinyin_by_mode("hhhh", mode="correction") == [("h", "h", "h", "h")]
     assert cut_pinyin_by_mode("ja'i'mnig", mode="greedy") == [
         ("j", "a", "i", "m", "ni", "g")
     ]
@@ -413,7 +421,7 @@ if __name__ == "__main__":
     print(res)
     res = cut_pinyin_by_mode("jaimnig", mode="greedy")  # j ai m ni g
     print(res)
-    print("correction mode:")
+    print("correction mode:")  # 这个是日常会使用的模式
     res = cut_pinyin_by_mode("jainmian", mode="correction")  # jian mian
     print(res)
     res = cut_pinyin_by_mode("jainshi", mode="correction")  # jian shi
@@ -422,7 +430,7 @@ if __name__ == "__main__":
     print(res)
     res = cut_pinyin_by_mode("jai'mnig", mode="correction")  # jia ming
     print(res)
-    res = cut_pinyin_by_mode("ja'i'mnig", mode="correction")  # ja i ming
+    res = cut_pinyin_by_mode("ja'i'mnig", mode="correction")  # j a i ming
     print(res)
     res = cut_pinyin_by_mode("xi'an", mode="correction")  # xi an
     print(res)
@@ -431,6 +439,10 @@ if __name__ == "__main__":
     res = cut_pinyin_by_mode("xianyang", mode="correction")  # xian
     print(res)
     res = cut_pinyin_by_mode("xi'anyang", mode="correction")  # xian
+    print(res)
+    res = cut_pinyin_by_mode("zzzq", mode="correction")  # z z z q
+    print(res)
+    res = cut_pinyin_by_mode("hhhh", mode="correction")  # h h h h
     print(res)
     print("fuzzy mode:")
     res = cut_pinyin_by_mode(
