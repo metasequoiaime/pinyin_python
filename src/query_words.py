@@ -45,13 +45,17 @@ def _build_table_name(segments: tuple[str, ...]) -> str:
     """
     n = len(segments)
     first_letter = segments[0][0]  # 第一个拼音段的首字母
-    print(f"Building table name for segments {segments}: tbl_{n}_{first_letter}")
     return f"tbl_{n}_{first_letter}"
 
 
 def _segments_to_key(segments: tuple[str, ...]) -> str:
     """将分词结果拼接为数据库中的 key 格式，例如 ('ni', 'hao') -> "ni'hao" """
     return "'".join(segments)
+
+
+def _segments_to_jp(segments: tuple[str, ...]) -> str:
+    """将分词结果转换为简拼，例如 ('ni', 'hao') -> "nh"。"""
+    return "".join(segment[0] for segment in segments if segment)
 
 
 def query_single_cut(
@@ -70,11 +74,47 @@ def query_single_cut(
     """
     table = _build_table_name(segments)
     key = _segments_to_key(segments)
+    jp = _segments_to_jp(segments)
 
-    sql = f'SELECT "value", "weight" FROM "{table}" WHERE "key" = ? ORDER BY "weight" DESC LIMIT ?'
     try:
-        cursor = conn.execute(sql, (key, limit))
+        exact_sql = (
+            f'SELECT "value", "weight" FROM "{table}" '
+            f'WHERE "key" = ? ORDER BY "weight" DESC LIMIT ?'
+        )
+        cursor = conn.execute(exact_sql, (key, limit))
+        rows = cursor.fetchall()
+        if rows:
+            return [(row[0], row[1]) for row in rows]
+
+        # 精确匹配为空时，退化为前缀匹配，
+        # 例如 ni'm 可以匹配 ni'ma、ni'men，ni'me 可以匹配 ni'mei、ni'men。
+        prefix_sql = (
+            f'SELECT "value", "weight" FROM "{table}" '
+            f'WHERE "key" LIKE ? ORDER BY "weight" DESC LIMIT ?'
+        )
+        cursor = conn.execute(prefix_sql, (f"{key}%", limit))
+        rows = cursor.fetchall()
+        if rows:
+            return [(row[0], row[1]) for row in rows]
+
+        # 全拼查询为空时，再尝试简拼查询，
+        # 例如 jjj 可以匹配 jp = jjj 的三字词。
+        jp_exact_sql = (
+            f'SELECT "value", "weight" FROM "{table}" '
+            f'WHERE "jp" = ? ORDER BY "weight" DESC LIMIT ?'
+        )
+        cursor = conn.execute(jp_exact_sql, (jp, limit))
+        rows = cursor.fetchall()
+        if rows:
+            return [(row[0], row[1]) for row in rows]
+
+        jp_prefix_sql = (
+            f'SELECT "value", "weight" FROM "{table}" '
+            f'WHERE "jp" LIKE ? ORDER BY "weight" DESC LIMIT ?'
+        )
+        cursor = conn.execute(jp_prefix_sql, (f"{jp}%", limit))
         return [(row[0], row[1]) for row in cursor.fetchall()]
+
     except sqlite3.OperationalError:
         # 表不存在等情况
         return []
@@ -220,3 +260,4 @@ if __name__ == "__main__":
     print_query_demo("nimen", mode="correction")
     print_query_demo("nime", mode="correction")
     print_query_demo("nim", mode="correction")
+    print_query_demo("jjj", mode="correction")
