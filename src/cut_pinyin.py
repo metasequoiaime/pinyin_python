@@ -444,6 +444,12 @@ if __name__ == "__main__":
     print(res)
     res = cut_pinyin_by_mode("hhhh", mode="correction")  # h h h h
     print(res)
+    res = cut_pinyin_by_mode("nimen", mode="correction")  # ni men
+    print(res)
+    res = cut_pinyin_by_mode("nime", mode="correction")  # ni me
+    print(res)
+    res = cut_pinyin_by_mode("nim", mode="correction")  # ni m
+    print(res)
     print("fuzzy mode:")
     res = cut_pinyin_by_mode(
         "zan", mode="fuzzy", fuzzy_rules=fuzzy_rules
