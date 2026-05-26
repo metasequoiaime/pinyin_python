@@ -225,16 +225,16 @@ if __name__ == "__main__":
 
         if flat:
             for value, weight in query_words_flat(pinyin, mode=mode):
-                print(f"  {value} ({weight})")
+                print(f"{value} ({weight})")
             return
 
         res = query_words(pinyin, mode=mode)
         for r in res["results"]:
-            print(f"  切分: {r['segments']} → 表 {r['table']}, key={r['key']}")
+            print(f"切分: {r['segments']} → 表 {r['table']}, key={r['key']}")
             for value, weight in r["items"]:
-                print(f"    {value} (权重: {weight})")
+                print(f"{value} (权重: {weight})")
             if not r["items"]:
-                print("    (无结果)")
+                print("(无结果)")
 
     # 示例 1：贪心模式查询 "nihao"
     print_query_demo("nihao")
@@ -243,7 +243,7 @@ if __name__ == "__main__":
     print("=" * 50)
     print('简化查询 "nihao":')
     for value, weight in query_words_flat("nihao"):
-        print(f"  {value} ({weight})")
+        print(f"{value} ({weight})")
 
     # 示例 3：带分隔符
     print_query_demo("xi'an")
@@ -261,3 +261,8 @@ if __name__ == "__main__":
     print_query_demo("nime", mode="correction")
     print_query_demo("nim", mode="correction")
     print_query_demo("jjj", mode="correction")
+    print_query_demo("n", mode="correction")
+    print_query_demo("ni", mode="correction")
+    print_query_demo("nim", mode="correction")
+    print_query_demo("nime", mode="correction")
+    print_query_demo("nimen", mode="correction")
