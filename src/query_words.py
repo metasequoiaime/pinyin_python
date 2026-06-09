@@ -58,6 +58,36 @@ def _segments_to_jp(segments: tuple[str, ...]) -> str:
     return "".join(segment[0] for segment in segments if segment)
 
 
+def _build_key_like_pattern(segments: tuple[str, ...]) -> str:
+    """
+    构造按分词段补全的 key 查询模式。
+
+    规则：
+    - 非最后一段：如果只有 1 个字母，则视为该段残缺，写成 `k%`
+    - 最后一段：始终允许继续补全，写成 `segment%`
+
+    例如：
+    - ('ni', 'm') -> "ni'm%"
+    - ('ni', 'me') -> "ni'me%"
+    - ('k', 'wu', 'ya') -> "k%'wu'ya%"
+    """
+    parts = []
+    last_index = len(segments) - 1
+    for index, segment in enumerate(segments):
+        if index == last_index:
+            parts.append(f"{segment}%")
+        elif len(segment) == 1:
+            parts.append(f"{segment}%")
+        else:
+            parts.append(segment)
+    return "'".join(parts)
+
+
+def _is_pure_jp_input(segments: tuple[str, ...]) -> bool:
+    """是否为纯简拼输入，例如 ('j', 'j', 'j')。"""
+    return all(len(segment) == 1 for segment in segments)
+
+
 def query_single_cut(
     conn: sqlite3.Connection,
     segments: tuple[str, ...],
@@ -75,6 +105,7 @@ def query_single_cut(
     table = _build_table_name(segments)
     key = _segments_to_key(segments)
     jp = _segments_to_jp(segments)
+    key_like_pattern = _build_key_like_pattern(segments)
 
     try:
         exact_sql = (
@@ -86,19 +117,24 @@ def query_single_cut(
         if rows:
             return [(row[0], row[1]) for row in rows]
 
-        # 精确匹配为空时，退化为前缀匹配，
-        # 例如 ni'm 可以匹配 ni'ma、ni'men，ni'me 可以匹配 ni'mei、ni'men。
+        # 精确匹配为空时，退化为按分词段补全的 key 匹配。
+        # 例如 ni'm 可以匹配 ni'ma、ni'men；
+        # kwuya -> ('k', 'wu', 'ya') 时，会尝试 k%'wu'ya%。
         prefix_sql = (
             f'SELECT "value", "weight" FROM "{table}" '
             f'WHERE "key" LIKE ? ORDER BY "weight" DESC LIMIT ?'
         )
-        cursor = conn.execute(prefix_sql, (f"{key}%", limit))
+        cursor = conn.execute(prefix_sql, (key_like_pattern, limit))
         rows = cursor.fetchall()
         if rows:
             return [(row[0], row[1]) for row in rows]
 
-        # 全拼查询为空时，再尝试简拼查询，
-        # 例如 jjj 可以匹配 jp = jjj 的三字词。
+        # 只有纯简拼输入才尝试 jp 查询。
+        # 例如 jjj 可以匹配 jp = jjj 的三字词；
+        # kewuya 这类已经是完整全拼的输入，不应回退到 jp。
+        if not _is_pure_jp_input(segments):
+            return []
+
         jp_exact_sql = (
             f'SELECT "value", "weight" FROM "{table}" '
             f'WHERE "jp" = ? ORDER BY "weight" DESC LIMIT ?'
@@ -108,12 +144,7 @@ def query_single_cut(
         if rows:
             return [(row[0], row[1]) for row in rows]
 
-        jp_prefix_sql = (
-            f'SELECT "value", "weight" FROM "{table}" '
-            f'WHERE "jp" LIKE ? ORDER BY "weight" DESC LIMIT ?'
-        )
-        cursor = conn.execute(jp_prefix_sql, (f"{jp}%", limit))
-        return [(row[0], row[1]) for row in cursor.fetchall()]
+        return []
 
     except sqlite3.OperationalError:
         # 表不存在等情况
@@ -266,3 +297,27 @@ if __name__ == "__main__":
     print_query_demo("nim", mode="correction")
     print_query_demo("nime", mode="correction")
     print_query_demo("nimen", mode="correction")
+    print_query_demo("k", mode="correction")
+    print_query_demo("ke", mode="correction")
+    print_query_demo("kew", mode="correction")
+    print_query_demo("kewu", mode="correction")
+    print_query_demo("kewuy", mode="correction")
+    print_query_demo("kewuya", mode="correction")
+    print_query_demo("kewuyou", mode="correction")
+    # ni hao ma
+    print_query_demo("n", mode="correction")
+    print_query_demo("ni", mode="correction")
+    print_query_demo("nih", mode="correction")
+    print_query_demo("niha", mode="correction")
+    print_query_demo("nihao", mode="correction")
+    print_query_demo("nihaom", mode="correction")
+    print_query_demo("nihaoma", mode="correction")
+    # yi jin
+    print_query_demo("y", mode="correction")
+    print_query_demo("yi", mode="correction")
+    print_query_demo("yij", mode="correction")
+    print_query_demo("yiji", mode="correction")
+    print_query_demo("yijin", mode="correction")
+    print_query_demo("fjaksdjfl", mode="correction")
+    # fja
+    print_query_demo("fja", mode="correction")
