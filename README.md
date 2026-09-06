@@ -1,5 +1,12 @@
 # pinyin_python
 
+<!-- badges:start -->
+[![CI](https://img.shields.io/github/actions/workflow/status/metasequoiaime/pinyin_python/ci.yml?branch=main&label=CI)](https://github.com/metasequoiaime/pinyin_python/actions/workflows/ci.yml)
+[![CodeQL](https://img.shields.io/github/actions/workflow/status/metasequoiaime/pinyin_python/codeql.yml?branch=main&label=CodeQL)](https://github.com/metasequoiaime/pinyin_python/actions/workflows/codeql.yml)
+[![License](https://img.shields.io/github/license/metasequoiaime/pinyin_python)](LICENSE)
+[![Stars](https://img.shields.io/github/stars/metasequoiaime/pinyin_python?style=flat)](https://github.com/metasequoiaime/pinyin_python/stargazers)
+<!-- badges:end -->
+
 拼音切分与候选查询的 Python 早期原型。
 
 **这个仓库已被取代，不再用于水杉输入法的开发。** 它保留下来是作为历史记录：拼音切分的思路最早是在这里推的，之后才成为产品代码。
@@ -14,3 +21,11 @@
 - `main.py` — 未使用的脚手架入口
 
 这些代码不参与任何产品构建，也不接受功能性改动。
+
+<!-- star-history:start -->
+## Star History
+
+<a href="https://star-history.com/#metasequoiaime/pinyin_python&Date">
+  <img src="https://api.star-history.com/svg?repos=metasequoiaime/pinyin_python&type=Date" alt="Star History Chart" width="600">
+</a>
+<!-- star-history:end -->
